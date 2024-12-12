@@ -128,16 +128,26 @@ app.put("/user/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// 🟢 **DELETE USER**
 app.delete("/user/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
-  try {
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+  const { user } = req; // Extract user from the token
 
-    await user.remove();
+  // Allow only admin or the user themselves to delete the account
+  if (user.role !== "admin" && user.id !== id) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  try {
+    const userToDelete = await User.findById(id);
+    if (!userToDelete)
+      return res.status(404).json({ message: "User not found" });
+
+    // Use findByIdAndDelete instead of remove
+    await User.findByIdAndDelete(id);
+
     res.status(200).json({ message: "User deleted successfully" });
   } catch (err) {
+    console.error("Error deleting user:", err); // Log error for debugging
     res.status(500).json({ message: "Error deleting user" });
   }
 });
